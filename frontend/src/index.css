@@ -7,28 +7,20 @@
     /* LIGHT MODE */
     --background: 0 0% 100%;
     --foreground: 0 0% 0%;
-
     --card: 0 0% 100%;
     --card-foreground: 0 0% 0%;
-
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 0%;
-
     --primary: 0 0% 0%;
     --primary-foreground: 0 0% 100%;
-
     --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 0%;
-
     --muted: 0 0% 96%;
     --muted-foreground: 0 0% 45%;
-
     --accent: 0 0% 96%;
     --accent-foreground: 0 0% 0%;
-
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-
     --border: 0 0% 90%;
     --input: 0 0% 90%;
     --ring: 0 0% 0%;
@@ -39,28 +31,20 @@
     /* DARK MODE */
     --background: 0 0% 3%;
     --foreground: 0 0% 98%;
-
     --card: 0 0% 3%;
     --card-foreground: 0 0% 98%;
-
     --popover: 0 0% 3%;
     --popover-foreground: 0 0% 98%;
-
     --primary: 0 0% 98%;
     --primary-foreground: 0 0% 0%;
-
     --secondary: 0 0% 12%;
     --secondary-foreground: 0 0% 98%;
-
     --muted: 0 0% 12%;
     --muted-foreground: 0 0% 60%;
-
     --accent: 0 0% 12%;
     --accent-foreground: 0 0% 98%;
-
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-
     --border: 0 0% 16%;
     --input: 0 0% 16%;
     --ring: 0 0% 83%;
@@ -71,10 +55,7 @@
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
-
-    transition: background-color 0.3s ease, color 0.3s ease;
   }
 }

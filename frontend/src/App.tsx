@@ -32,10 +32,8 @@ import toast, { Toaster } from "react-hot-toast";
 type ViewMode = "search" | "profile";
 
 function App() {
-  // --- STATE ---
   const [view, setView] = useState<ViewMode>("search");
 
-  // Search State
   const [query, setQuery] = useState("");
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,14 +41,11 @@ function App() {
   const [isOnline, setIsOnline] = useState(false);
   const [trends, setTrends] = useState<Trend[]>([]);
 
-  // Profile View State
   const [profileLoading, setProfileLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [userTimeline, setUserTimeline] = useState<Tweet[]>([]);
 
-  // --- EFFECTS ---
   useEffect(() => {
-    // Safety check for health/trends to prevent crash on load
     checkHealth()
       .then(setIsOnline)
       .catch(() => setIsOnline(false));
@@ -59,7 +54,6 @@ function App() {
       .catch(() => setTrends([]));
   }, []);
 
-  // --- HANDLERS ---
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!query.trim()) return;
@@ -71,7 +65,6 @@ function App() {
 
     try {
       const data = await searchTweets(query);
-      // Safety check: ensure tweets is an array
       const safeTweets = Array.isArray(data.tweets) ? data.tweets : [];
       setTweets(safeTweets);
 
@@ -91,7 +84,7 @@ function App() {
   };
 
   const handleUserClick = async (username: string) => {
-    if (!username) return; // Guard against empty username clicks
+    if (!username) return;
 
     setProfileLoading(true);
     setView("profile");
@@ -104,7 +97,6 @@ function App() {
       ]);
 
       setSelectedUser(profileData);
-
       setUserTimeline(Array.isArray(timelineData) ? timelineData : []);
     } catch (err: unknown) {
       handleError(err);
@@ -129,11 +121,10 @@ function App() {
     setError(msg);
   };
 
+  // --- RENDER HELPERS ---
   const renderTweetCard = (tweet: Tweet) => {
-    // COMPREHENSIVE NULL CHECKS
     if (!tweet) return null;
 
-    // Default Fallbacks
     const userName = tweet.user_name || "Anonymous";
     const userScreenName = tweet.user_screen_name || "unknown";
     const userInitial = userName.charAt(0) || "?";
@@ -142,20 +133,20 @@ function App() {
     const retweetCount = tweet.retweets || 0;
     const tweetUrl = tweet.url || "#";
 
-    // Date Safety
     let dateDisplay = "Unknown Date";
     try {
       if (tweet.created_at) {
         dateDisplay = new Date(tweet.created_at).toLocaleDateString();
       }
     } catch {
-      // Keep default, omit the error variable to satisfy linter
+      // safe fallback
     }
 
     return (
       <Card
         key={tweet.id || Math.random().toString()}
-        className="group hover:border-foreground/40 transition-all duration-300 hover:shadow-lg bg-card/50 backdrop-blur-sm"
+        // PURE CSS CLASSES - No animations
+        className="group hover:border-foreground/60 border-border/50 bg-card"
       >
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -167,7 +158,7 @@ function App() {
                 {userInitial}
               </div>
               <div>
-                <p className="font-semibold leading-none group-hover:underline decoration-1 underline-offset-4 transition-all">
+                <p className="font-semibold leading-none group-hover:underline decoration-1 underline-offset-4">
                   {userName}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -179,7 +170,7 @@ function App() {
               href={tweetUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-xs font-medium px-3 py-1 rounded-full bg-secondary hover:bg-foreground hover:text-background transition-colors duration-300"
+              className="text-xs font-medium px-3 py-1 rounded-full bg-secondary hover:bg-foreground hover:text-background"
             >
               View
             </a>
@@ -190,10 +181,10 @@ function App() {
             {tweetText}
           </p>
           <div className="flex items-center gap-6 text-sm text-muted-foreground pt-4 border-t border-border/50">
-            <span className="flex items-center gap-1.5 transition-colors hover:text-red-500">
+            <span className="flex items-center gap-1.5 hover:text-red-500">
               <Heart className="h-4 w-4" /> {likeCount}
             </span>
-            <span className="flex items-center gap-1.5 transition-colors hover:text-green-500">
+            <span className="flex items-center gap-1.5 hover:text-green-500">
               <Repeat className="h-4 w-4" /> {retweetCount}
             </span>
             <span className="ml-auto text-xs opacity-50">{dateDisplay}</span>
@@ -207,23 +198,23 @@ function App() {
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <Toaster position="bottom-right" />
 
-      {/* Main Container */}
-      <div className="min-h-screen w-full bg-background transition-colors duration-300">
+      {/* Main Container - Instant BG Switch */}
+      <div className="min-h-screen w-full bg-background">
         <div className="max-w-5xl mx-auto p-6 md:p-12 space-y-8">
           {/* HEADER */}
-          <header className="flex flex-col md:flex-row justify-between items-center gap-4 border-b pb-6 transition-colors duration-300">
+          <header className="flex flex-col md:flex-row justify-between items-center gap-4 border-b pb-6">
             <div
-              className="flex items-center gap-3"
+              className="flex items-center gap-3 cursor-pointer"
               onClick={() => setView("search")}
             >
-              <Twitter className="h-8 w-8 text-foreground fill-current transition-transform hover:scale-110 duration-300 cursor-pointer" />
-              <h1 className="text-3xl font-bold tracking-tight cursor-pointer">
+              <Twitter className="h-8 w-8 text-foreground fill-current" />
+              <h1 className="text-3xl font-bold tracking-tight">
                 Twitter Scraper
               </h1>
             </div>
 
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2 text-sm font-medium bg-secondary px-3 py-1 rounded-full transition-colors duration-300">
+              <div className="flex items-center gap-2 text-sm font-medium bg-secondary px-3 py-1 rounded-full">
                 <span
                   className={`h-2 w-2 rounded-full ${
                     isOnline
@@ -241,20 +232,19 @@ function App() {
 
           {/* VIEW: SEARCH */}
           {view === "search" && (
-            <div className="space-y-12 animate-in fade-in duration-500">
-              {/* SEARCH INPUT */}
+            <div className="space-y-12">
               <section className="max-w-2xl mx-auto">
                 <form onSubmit={handleSearch} className="flex gap-3">
                   <Input
                     placeholder="Search keywords or @users..."
-                    className="h-14 text-lg px-6 rounded-xl border-2 focus-visible:ring-0 focus-visible:border-foreground transition-all duration-300"
+                    className="h-14 text-lg px-6 rounded-xl border-2 focus-visible:ring-0 focus-visible:border-foreground transition-none"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                   />
                   <Button
                     type="submit"
                     size="lg"
-                    className="h-14 px-8 rounded-xl text-lg font-medium transition-transform active:scale-95 duration-200"
+                    className="h-14 px-8 rounded-xl text-lg font-medium active:translate-y-0.5"
                     disabled={loading}
                   >
                     {loading ? (
@@ -276,14 +266,13 @@ function App() {
                       href={t.url || "#"}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs px-3 py-1 rounded-full bg-secondary hover:bg-foreground hover:text-background transition-colors duration-300 border border-transparent hover:border-border"
+                      className="text-xs px-3 py-1 rounded-full bg-secondary hover:bg-foreground hover:text-background"
                     >
                       {t.name || "Unknown"}
                     </a>
                   ))}
                 </div>
 
-                {/* ERROR MSG */}
                 {error && (
                   <div className="mt-4 p-4 bg-destructive/5 border border-destructive/20 text-destructive rounded-xl flex items-center gap-3">
                     <AlertCircle className="h-5 w-5" />
@@ -292,7 +281,6 @@ function App() {
                 )}
               </section>
 
-              {/* SEARCH RESULTS GRID */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {loading &&
                   Array.from({ length: 4 }).map((_, i) => (
@@ -320,7 +308,7 @@ function App() {
 
           {/* VIEW: PROFILE */}
           {view === "profile" && (
-            <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
+            <div className="space-y-8">
               <Button
                 variant="ghost"
                 onClick={() => setView("search")}
@@ -339,7 +327,6 @@ function App() {
                 </div>
               ) : selectedUser ? (
                 <>
-                  {/* USER PROFILE CARD */}
                   <Card className="border-2 border-border/50">
                     <CardContent className="pt-6">
                       <div className="flex flex-col md:flex-row gap-6 items-start">
@@ -350,7 +337,6 @@ function App() {
                               alt={selectedUser.name || "User"}
                               className="h-full w-full object-cover"
                               onError={(e) => {
-                                // Fallback if image load fails
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = "none";
                                 if (target.parentElement) {
@@ -430,7 +416,6 @@ function App() {
                     </CardContent>
                   </Card>
 
-                  {/* USER TIMELINE GRID */}
                   <h3 className="text-xl font-semibold mt-8 flex items-center gap-2">
                     <Users className="h-5 w-5" /> Recent Tweets
                   </h3>

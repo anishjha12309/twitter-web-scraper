@@ -1,10 +1,37 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>Twitter Scraper</title>
+
+    <script>
+      (function () {
+        const storageKey = "vite-ui-theme";
+        const defaultTheme = "dark";
+
+        let theme;
+        try {
+          theme = localStorage.getItem(storageKey) || defaultTheme;
+        } catch (e) {
+          theme = defaultTheme;
+        }
+
+        const root = document.documentElement;
+        root.classList.remove("light", "dark");
+
+        if (theme === "system") {
+          const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+            .matches
+            ? "dark"
+            : "light";
+          root.classList.add(systemTheme);
+        } else {
+          root.classList.add(theme);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
