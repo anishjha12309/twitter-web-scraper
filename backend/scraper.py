@@ -17,20 +17,24 @@ import uvicorn
 # Initialize Client
 client = Client('en-US')
 
-# --- LIFESPAN (Replaces startup event) ---
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Load cookies on startup
+    
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+   
+    cookies_path = os.path.join(script_dir, 'cookies.json')
+
     try:
-        if os.path.exists('cookies.json'):
-            client.load_cookies('cookies.json')
-            print("✅ Cookies loaded successfully")
+        if os.path.exists(cookies_path):
+            client.load_cookies(cookies_path)
+            print(f"✅ Cookies loaded successfully from: {cookies_path}")
         else:
-            print("⚠️ Warning: cookies.json not found")
+           
+            print(f"⚠️ Warning: cookies.json not found at {cookies_path}")
     except Exception as e:
         print(f"❌ Error loading cookies: {e}")
     yield
-    # Cleanup code can go here if needed
 
 # Initialize Limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -94,6 +98,8 @@ async def search_tweets(request: Request, body: SearchRequest):
             })
         return {"success": True, "tweets": results}
     except Exception as e:
+        # Print the error to logs so we can debug on Railway
+        print(f"❌ Search Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/user/{username}")
@@ -109,11 +115,16 @@ async def get_user_profile(request: Request, username: str):
                 "screen_name": user.screen_name,
                 "bio": getattr(user, 'description', '') or "",
                 "followers_count": getattr(user, 'followers_count', 0) or 0,
+                "following_count": getattr(user, 'friends_count', 0) or 0,
                 "tweets_count": getattr(user, 'statuses_count', 0) or 0,
                 "profile_image_url": getattr(user, 'profile_image_url', '') or "",
+                "location": getattr(user, 'location', '') or "",
+                "website": getattr(user, 'url', '') or "",
+                "created_at": getattr(user, 'created_at', '') or "",
             }
         }
     except Exception as e:
+        print(f"❌ Profile Error: {e}")
         raise HTTPException(status_code=404, detail=str(e))
 
 @app.get("/user/{username}/tweets")
@@ -122,9 +133,22 @@ async def get_user_tweets(request: Request, username: str, count: int = 20):
     try:
         username = username.replace("@", "")
         tweets = await cached_user_tweets(username, count)
-        results = [{"id": t.id, "text": t.text, "likes": t.favorite_count} for t in tweets]
+        results = []
+        for t in tweets:
+             results.append({
+                "id": t.id, 
+                "text": t.text, 
+                "likes": t.favorite_count,
+                "retweets": t.retweet_count,
+                "created_at": str(t.created_at),
+                "user_name": t.user.name,
+                "user_screen_name": t.user.screen_name,
+                "user_followers": t.user.followers_count,
+                "url": f"https://twitter.com/{t.user.screen_name}/status/{t.id}"
+             })
         return {"success": True, "tweets": results}
     except Exception as e:
+        print(f"❌ Timeline Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/trending")
@@ -135,6 +159,7 @@ async def get_trending(request: Request):
         results = [{"name": t.name, "url": f"https://twitter.com/search?q={t.name}"} for t in trends[:10]]
         return {"success": True, "trends": results}
     except Exception as e:
+        print(f"❌ Trending Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
