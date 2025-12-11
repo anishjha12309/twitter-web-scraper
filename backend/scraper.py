@@ -1,34 +1,26 @@
 """
 Twitter Web Scraper API
-FastAPI backend that scrapes Twitter data using Twikit
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from twikit import Client
-import asyncio
-from typing import Optional, List
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from async_lru import alru_cache
+from typing import Optional
 import os
+import uvicorn
 
-# Initialize FastAPI app
-app = FastAPI(title="Twitter Scraper API")
-
-# Enable CORS for frontend communication
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend URL
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Initialize Twikit client
+# Initialize Client
 client = Client('en-US')
 
-# Load cookies on startup
-@app.on_event("startup")
-async def startup_event():
-    """Load Twitter cookies when server starts"""
+# --- LIFESPAN (Replaces startup event) ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Load cookies on startup
     try:
         if os.path.exists('cookies.json'):
             client.load_cookies('cookies.json')
@@ -37,81 +29,56 @@ async def startup_event():
             print("⚠️ Warning: cookies.json not found")
     except Exception as e:
         print(f"❌ Error loading cookies: {e}")
+    yield
+    # Cleanup code can go here if needed
 
+# Initialize Limiter
+limiter = Limiter(key_func=get_remote_address)
 
-# Request/Response Models
+# Initialize App with Lifespan
+app = FastAPI(title="Twitter Scraper API", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# --- CACHING WRAPPERS ---
+@alru_cache(maxsize=100, ttl=300)
+async def cached_search(query: str, product: str, count: int):
+    return await client.search_tweet(query, product=product, count=count)
+
+@alru_cache(maxsize=100, ttl=300)
+async def cached_user_lookup(username: str):
+    return await client.get_user_by_screen_name(username)
+
+@alru_cache(maxsize=100, ttl=300)
+async def cached_user_tweets(username: str, count: int):
+    user = await client.get_user_by_screen_name(username)
+    return await user.get_tweets('Tweets', count=count)
+
+# --- MODELS ---
 class SearchRequest(BaseModel):
     query: str
     count: Optional[int] = 20
-    search_type: Optional[str] = "Latest"  # Latest, Top, People, Photos, Videos
+    search_type: Optional[str] = "Latest"
 
-
-class UserRequest(BaseModel):
-    username: str
-
-
-class TweetData(BaseModel):
-    id: str
-    text: str
-    created_at: str
-    likes: int
-    retweets: int
-    replies: int
-    views: Optional[int] = 0
-    user_name: str
-    user_screen_name: str
-    user_followers: int
-
-
-class UserData(BaseModel):
-    name: str
-    screen_name: str
-    bio: Optional[str] = ""
-    followers_count: int
-    following_count: int
-    tweets_count: int
-    created_at: str
-    verified: bool
-    profile_image_url: Optional[str] = ""
-
-
-# API Endpoints
+# --- ENDPOINTS ---
 
 @app.get("/")
 async def root():
-    """Health check endpoint"""
-    return {
-        "status": "online",
-        "message": "Twitter Scraper API is running",
-        "endpoints": [
-            "/search - Search tweets by keyword/hashtag",
-            "/user/{username} - Get user profile info",
-            "/user/{username}/tweets - Get user's recent tweets"
-        ]
-    }
-
+    return {"status": "online", "message": "Twitter Scraper API is running"}
 
 @app.post("/search")
-async def search_tweets(request: SearchRequest):
-    """
-    Search tweets by keyword or hashtag
-    
-    Example request:
-    {
-        "query": "python programming",
-        "count": 20,
-        "search_type": "Latest"
-    }
-    """
+@limiter.limit("5/minute")
+async def search_tweets(request: Request, body: SearchRequest):
     try:
-        # Search tweets
-        tweets = await client.search_tweet(
-            request.query, 
-            product=request.search_type,
-            count=request.count
-        )
-        
-        # Format response
+        tweets = await cached_search(body.query, body.search_type, body.count)
         results = []
         for tweet in tweets:
             results.append({
@@ -120,39 +87,21 @@ async def search_tweets(request: SearchRequest):
                 "created_at": str(tweet.created_at),
                 "likes": tweet.favorite_count or 0,
                 "retweets": tweet.retweet_count or 0,
-                "replies": tweet.reply_count or 0,
-                "views": getattr(tweet, 'view_count', 0) or 0,
                 "user_name": tweet.user.name,
                 "user_screen_name": tweet.user.screen_name,
                 "user_followers": tweet.user.followers_count or 0,
                 "url": f"https://twitter.com/{tweet.user.screen_name}/status/{tweet.id}"
             })
-        
-        return {
-            "success": True,
-            "query": request.query,
-            "count": len(results),
-            "tweets": results
-        }
-        
+        return {"success": True, "tweets": results}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
-
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/user/{username}")
-async def get_user_profile(username: str):
-    """
-    Get detailed user profile information
-    
-    Example: /user/elonmusk
-    """
+@limiter.limit("10/minute")
+async def get_user_profile(request: Request, username: str):
     try:
-        # Remove @ if user includes it
         username = username.replace("@", "")
-        
-        # Get user profile
-        user = await client.get_user_by_screen_name(username)
-        
+        user = await cached_user_lookup(username)
         return {
             "success": True,
             "user": {
@@ -160,90 +109,33 @@ async def get_user_profile(username: str):
                 "screen_name": user.screen_name,
                 "bio": getattr(user, 'description', '') or "",
                 "followers_count": getattr(user, 'followers_count', 0) or 0,
-                "following_count": getattr(user, 'following_count', 0) or 0,
                 "tweets_count": getattr(user, 'statuses_count', 0) or 0,
-                "created_at": str(user.created_at) if hasattr(user, 'created_at') and user.created_at else "",
-                "verified": getattr(user, 'verified', False) or False,
-                "profile_image_url": getattr(user, 'profile_image_url', '') or getattr(user, 'profile_image_url_https', '') or "",
-                "location": getattr(user, 'location', '') or "",
-                "website": getattr(user, 'url', '') or "",
-                "profile_url": f"https://twitter.com/{user.screen_name}"
+                "profile_image_url": getattr(user, 'profile_image_url', '') or "",
             }
         }
-        
     except Exception as e:
-        raise HTTPException(status_code=404, detail=f"User not found: {str(e)}")
-
+        raise HTTPException(status_code=404, detail=str(e))
 
 @app.get("/user/{username}/tweets")
-async def get_user_tweets(username: str, count: int = 20):
-    """
-    Get recent tweets from a specific user
-    
-    Example: /user/elonmusk/tweets?count=10
-    """
+@limiter.limit("5/minute")
+async def get_user_tweets(request: Request, username: str, count: int = 20):
     try:
-        # Remove @ if user includes it
         username = username.replace("@", "")
-        
-        # Get user first
-        user = await client.get_user_by_screen_name(username)
-        
-        # Get user's tweets
-        tweets = await user.get_tweets('Tweets', count=count)
-        
-        # Format response
-        results = []
-        for tweet in tweets:
-            results.append({
-                "id": tweet.id,
-                "text": tweet.text,
-                "created_at": str(tweet.created_at),
-                "likes": tweet.favorite_count or 0,
-                "retweets": tweet.retweet_count or 0,
-                "replies": tweet.reply_count or 0,
-                "views": getattr(tweet, 'view_count', 0) or 0,
-                "url": f"https://twitter.com/{username}/status/{tweet.id}"
-            })
-        
-        return {
-            "success": True,
-            "username": username,
-            "count": len(results),
-            "tweets": results
-        }
-        
+        tweets = await cached_user_tweets(username, count)
+        results = [{"id": t.id, "text": t.text, "likes": t.favorite_count} for t in tweets]
+        return {"success": True, "tweets": results}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch tweets: {str(e)}")
-
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/trending")
-async def get_trending():
-    """
-    Get current trending topics/hashtags
-    """
+@limiter.limit("2/minute")
+async def get_trending(request: Request):
     try:
         trends = await client.get_trends('trending')
-        
-        results = []
-        for trend in trends[:20]:  
-            results.append({
-                "name": trend.name,
-                "tweet_count": getattr(trend, 'tweet_count', 0) or 0,
-                "url": f"https://twitter.com/search?q={trend.name.replace('#', '%23')}"
-            })
-        
-        return {
-            "success": True,
-            "count": len(results),
-            "trends": results
-        }
-        
+        results = [{"name": t.name, "url": f"https://twitter.com/search?q={t.name}"} for t in trends[:10]]
+        return {"success": True, "trends": results}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch trends: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-# Run server
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
