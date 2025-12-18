@@ -1,5 +1,6 @@
 """
 Twitter Web Scraper API
+With automatic cookie refresh on expiration
 """
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,30 +12,110 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from async_lru import alru_cache
 from typing import Optional
+from dotenv import load_dotenv
 import os
 import uvicorn
+import traceback
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Initialize Client
 client = Client('en-US')
 
+# Get credentials from environment variables
+TWITTER_USERNAME = os.getenv("TWITTER_USERNAME")
+TWITTER_EMAIL = os.getenv("TWITTER_EMAIL")
+TWITTER_PASSWORD = os.getenv("TWITTER_PASSWORD")
+
+# Log credential status on startup (don't log actual values for security)
+print(f"🔑 Credentials check:")
+print(f"   TWITTER_USERNAME: {'✅ Set' if TWITTER_USERNAME else '❌ Not set'}")
+print(f"   TWITTER_EMAIL: {'✅ Set' if TWITTER_EMAIL else '⚠️ Not set (optional)'}")
+print(f"   TWITTER_PASSWORD: {'✅ Set' if TWITTER_PASSWORD else '❌ Not set'}")
+
+# Flag to track if we're currently re-authenticating (prevent infinite loops)
+_is_reauthenticating = False
+
+
+async def re_authenticate():
+    """Re-authenticate with Twitter using credentials from environment variables"""
+    global _is_reauthenticating
+    
+    if _is_reauthenticating:
+        print("⚠️ Already re-authenticating, skipping...")
+        return False
+    
+    if not all([TWITTER_USERNAME, TWITTER_PASSWORD]):
+        print("❌ Cannot re-authenticate: TWITTER_USERNAME and TWITTER_PASSWORD must be set")
+        return False
+    
+    _is_reauthenticating = True
+    try:
+        print("🔄 Attempting to re-authenticate with Twitter...")
+        
+        await client.login(
+            auth_info_1=TWITTER_USERNAME,
+            auth_info_2=TWITTER_EMAIL,  # Optional, can be None
+            password=TWITTER_PASSWORD
+        )
+        
+        # Save new cookies
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        cookies_path = os.path.join(script_dir, 'cookies.json')
+        client.save_cookies(cookies_path)
+        
+        print("✅ Re-authentication successful! Cookies saved.")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Re-authentication failed: {e}")
+        print(f"📋 Traceback:\n{traceback.format_exc()}")
+        return False
+    finally:
+        _is_reauthenticating = False
+
+
+def is_auth_error(error: Exception) -> bool:
+    """Check if an error is related to authentication/cookies"""
+    error_msg = str(error).lower()
+    error_type = type(error).__name__.lower()
+    
+    # Check both error message and exception type name
+    auth_keywords = ["unauthorized", "401", "forbidden", "403", "not logged in", "login", "auth", "cookie"]
+    
+    # Check in error message
+    if any(keyword in error_msg for keyword in auth_keywords):
+        return True
+    
+    # Check in exception type name (e.g., twikit.errors.Unauthorized)
+    if any(keyword in error_type for keyword in auth_keywords):
+        return True
+    
+    return False
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    
     script_dir = os.path.dirname(os.path.abspath(__file__))
-   
     cookies_path = os.path.join(script_dir, 'cookies.json')
 
     try:
         if os.path.exists(cookies_path):
             client.load_cookies(cookies_path)
             print(f"✅ Cookies loaded successfully from: {cookies_path}")
+        elif all([TWITTER_USERNAME, TWITTER_PASSWORD]):
+            print("📂 No cookies.json found, attempting login with credentials...")
+            await re_authenticate()
         else:
-           
-            print(f"⚠️ Warning: cookies.json not found at {cookies_path}")
+            print(f"⚠️ Warning: No cookies.json and no credentials in environment variables")
     except Exception as e:
         print(f"❌ Error loading cookies: {e}")
+        if all([TWITTER_USERNAME, TWITTER_PASSWORD]):
+            print("🔄 Attempting login with credentials...")
+            await re_authenticate()
     yield
+
 
 # Initialize Limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -52,19 +133,66 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- CACHING WRAPPERS ---
+
+# --- API CALL WRAPPERS WITH AUTO-RETRY ---
+async def search_with_retry(query: str, product: str, count: int):
+    """Search tweets with automatic re-authentication on failure"""
+    try:
+        return await client.search_tweet(query, product=product, count=count)
+    except Exception as e:
+        error_type = type(e).__name__
+        error_msg = str(e)
+        print(f"🚨 Search error caught: [{error_type}] {error_msg}")
+        print(f"   is_auth_error result: {is_auth_error(e)}")
+        
+        if is_auth_error(e):
+            print(f"🔐 Auth error detected, attempting re-authentication...")
+            if await re_authenticate():
+                print("✅ Re-auth successful, retrying search...")
+                return await client.search_tweet(query, product=product, count=count)
+            else:
+                print("❌ Re-auth failed, raising original error")
+        raise
+
+
+async def get_user_with_retry(username: str):
+    """Get user profile with automatic re-authentication on failure"""
+    try:
+        return await client.get_user_by_screen_name(username)
+    except Exception as e:
+        if is_auth_error(e):
+            print(f"🔐 Auth error detected, attempting re-authentication...")
+            if await re_authenticate():
+                return await client.get_user_by_screen_name(username)
+        raise
+
+
+async def get_user_tweets_with_retry(username: str, count: int):
+    """Get user tweets with automatic re-authentication on failure"""
+    try:
+        user = await client.get_user_by_screen_name(username)
+        return await user.get_tweets('Tweets', count=count)
+    except Exception as e:
+        if is_auth_error(e):
+            print(f"🔐 Auth error detected, attempting re-authentication...")
+            if await re_authenticate():
+                user = await client.get_user_by_screen_name(username)
+                return await user.get_tweets('Tweets', count=count)
+        raise
+
+
+# --- CACHING WRAPPERS (now using retry functions) ---
 @alru_cache(maxsize=100, ttl=300)
 async def cached_search(query: str, product: str, count: int):
-    return await client.search_tweet(query, product=product, count=count)
+    return await search_with_retry(query, product, count)
 
 @alru_cache(maxsize=100, ttl=300)
 async def cached_user_lookup(username: str):
-    return await client.get_user_by_screen_name(username)
+    return await get_user_with_retry(username)
 
 @alru_cache(maxsize=100, ttl=300)
 async def cached_user_tweets(username: str, count: int):
-    user = await client.get_user_by_screen_name(username)
-    return await user.get_tweets('Tweets', count=count)
+    return await get_user_tweets_with_retry(username, count)
 
 # --- MODELS ---
 class SearchRequest(BaseModel):
@@ -77,6 +205,29 @@ class SearchRequest(BaseModel):
 @app.get("/")
 async def root():
     return {"status": "online", "message": "Twitter Scraper API is running"}
+
+@app.get("/debug/auth")
+async def debug_auth():
+    """Check if Twitter authentication is working"""
+    try:
+        # Try a simple search to verify cookies work
+        tweets = await client.search_tweet("test", product="Latest", count=1)
+        return {
+            "authenticated": True,
+            "message": "Cookies are valid and working!",
+            "test_search_success": True
+        }
+    except Exception as e:
+        import traceback
+        print(f"🔍 Auth Debug Error: {e}")
+        print(f"📋 Traceback:\n{traceback.format_exc()}")
+        return {
+            "authenticated": False,
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "message": "Cookies are expired or invalid. Please refresh cookies.json"
+        }
+
 
 @app.post("/search")
 @limiter.limit("5/minute")
@@ -98,9 +249,23 @@ async def search_tweets(request: Request, body: SearchRequest):
             })
         return {"success": True, "tweets": results}
     except Exception as e:
-        # Print the error to logs so we can debug on Railway
-        print(f"❌ Search Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        error_msg = str(e)
+        error_type = type(e).__name__
+        
+        # Print detailed error to Railway logs
+        print(f"❌ Search Error [{error_type}]: {error_msg}")
+        print(f"📋 Full traceback:\n{traceback.format_exc()}")
+        
+        # Check for common authentication issues
+        if "unauthorized" in error_msg.lower() or "401" in error_msg:
+            raise HTTPException(status_code=401, detail="Twitter cookies expired. Please refresh cookies.json")
+        elif "forbidden" in error_msg.lower() or "403" in error_msg:
+            raise HTTPException(status_code=403, detail="Twitter blocked the request. Cookies may be invalid.")
+        elif "not logged in" in error_msg.lower():
+            raise HTTPException(status_code=401, detail="Not logged in. Cookies need to be refreshed.")
+        
+        raise HTTPException(status_code=500, detail=f"[{error_type}] {error_msg}")
 
 @app.get("/user/{username}")
 @limiter.limit("10/minute")

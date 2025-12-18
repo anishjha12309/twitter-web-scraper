@@ -1,15 +1,14 @@
 {
-  "auth_token": "6f7996f2698acbe4aa772e3a27571f01f133d56b",
-  "gt": "1999062236007121297",
-  "guest_id": "v1%3A176544855248088154",
-  "twid": "u%3D1999062419092684800",
-  "_twitter_sess": "BAh7BiIKZmxhc2hJQzonQWN0aW9uQ29udHJvbGxlcjo6Rmxhc2g6OkZsYXNo%250ASGFzaHsABjoKQHVzZWR7AA%253D%253D--1164b91ac812d853b877e93ddb612b7471bebc74",
-  "__cf_bm": "reXsurQyxh0RubdsuGaDqiu2S1Km8M.Rti7MLcsxLmw-1765449267.8181787-1.0.1.1-1TezzY4UG_56aUxFEc8YAzncWIDho.hPRNSUE5hWv6ymZnvvxNaXusVIlVCEmKwxzTMjbJ69AXqcVhgZb975Nt64G_rJ2U3a5NsRiE5Ne7gH0Vg5uPHtVgATiRz6R8zX",
-  "ct0": "4e24d2937364cb994b3cb252fd7065a37a6dcc55268b7e7be427e5a7206c8ad8a49ce537af6350cb04965f5b97246570a1679b318c066f01bff7aa94681b333a6ecbaea0e94fb449e73a574a05ce7870",
+  "auth_token": "2c5fd0724e80335191320a2685886c2d5d6dd416",
+  "guest_id": "v1%3A176606351558171466",
+  "twid": "u%3D2001641048175710212",
+  "auth_multi": "\"1966626071534858242:480f91048bb3e1dad0601faa65d899509ec55c02\"",
+  "__cf_bm": "pN.sYWJlaECatTNCk0Zrz_xmrubrWMLDpBw8Br8xbpg-1766063522.1582863-1.0.1.1-tdEnBeGEPZevgTaatp8a3EjrhtdCGPBXtOe_Fu9gPwE6dGNHP8GVX.FCT4KERO4DiyjWx1EnCtegPqeju5JT3nMlQBBrdJ8slouZ53GcPsPRAhKARf.ZGH3QCPP2B6LN",
+  "ct0": "19b5d1fa176047f77523191c33400d0d495f3612e314f2f68d5ae2f010a959dc889d75ae2b9f317201706b8288dc4b250424660fc4b46e59f6b904fd73ce9a09a22a059d66333e11d6270fb8a2682d2d",
   "d_prefs": "MjoxLGNvbnNlbnRfdmVyc2lvbjoyLHRleHRfdmVyc2lvbjoxMDAw",
   "dnt": "1",
-  "guest_id_ads": "v1%3A176544855248088154",
-  "guest_id_marketing": "v1%3A176544855248088154",
+  "guest_id_ads": "v1%3A176606351558171466",
+  "guest_id_marketing": "v1%3A176606351558171466",
   "kdt": "sVl19JhlSoAvXE7XF2QJV6MneHfIZ02kJGVBAnOq",
-  "personalization_id": "\"v1_MEgisnMlyOM4D6p/6gbwkQ==\""
+  "personalization_id": "\"v1_u/h6sTvjiegBbxc4O6/TGw==\""
 }
