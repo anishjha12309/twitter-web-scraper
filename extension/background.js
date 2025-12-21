@@ -79,10 +79,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Auto-sync when Twitter cookies change (auth_token specifically)
 chrome.cookies.onChanged.addListener((changeInfo) => {
+  // Only sync when cookie is SET (not removed)
+  if (changeInfo.removed) {
+    return; // Cookie was deleted, skip sync
+  }
+  
   if (changeInfo.cookie.domain.includes('twitter.com') || changeInfo.cookie.domain.includes('x.com')) {
     if (changeInfo.cookie.name === 'auth_token') {
-      console.log('🔄 Auth token changed, auto-syncing...');
-      syncCookies();
+      console.log('🔄 Auth token updated, waiting for other cookies...');
+      // Wait 2 seconds for all cookies to be set after login
+      setTimeout(() => {
+        console.log('🔄 Now syncing cookies...');
+        syncCookies();
+      }, 2000);
     }
   }
 });
