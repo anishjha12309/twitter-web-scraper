@@ -229,6 +229,69 @@ async def debug_auth():
         }
 
 
+@app.post("/debug/force-reauth")
+async def force_reauth():
+    """Force re-authentication for testing - triggers credential-based login"""
+    print("🧪 Force re-auth triggered via debug endpoint")
+    success = await re_authenticate()
+    return {
+        "success": success,
+        "message": "Re-authentication successful! New cookies saved." if success else "Re-authentication failed. Check Railway logs for details.",
+        "credentials_available": all([TWITTER_USERNAME, TWITTER_PASSWORD])
+    }
+
+
+@app.post("/debug/invalidate-cookies")
+async def invalidate_cookies():
+    """Invalidate current cookies to test auto re-auth on next request"""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    cookies_path = os.path.join(script_dir, 'cookies.json')
+    
+    try:
+        if os.path.exists(cookies_path):
+            # Rename instead of delete so we can recover if needed
+            backup_path = cookies_path + ".backup"
+            os.rename(cookies_path, backup_path)
+            print(f"🗑️ Cookies invalidated (backed up to {backup_path})")
+            return {
+                "success": True,
+                "message": "Cookies invalidated. Next API call will trigger re-authentication.",
+                "backup_created": True
+            }
+        else:
+            return {
+                "success": False,
+                "message": "No cookies.json found to invalidate.",
+                "backup_created": False
+            }
+    except Exception as e:
+        print(f"❌ Error invalidating cookies: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "message": "Failed to invalidate cookies"
+        }
+
+
+@app.get("/debug/status")
+async def debug_status():
+    """Get comprehensive debug status - cookies, credentials, and auth state"""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    cookies_path = os.path.join(script_dir, 'cookies.json')
+    
+    return {
+        "cookies_file_exists": os.path.exists(cookies_path),
+        "credentials_configured": {
+            "username": bool(TWITTER_USERNAME),
+            "email": bool(TWITTER_EMAIL),
+            "password": bool(TWITTER_PASSWORD)
+        },
+        "can_auto_reauth": all([TWITTER_USERNAME, TWITTER_PASSWORD]),
+        "is_currently_reauthenticating": _is_reauthenticating,
+        "environment": "production" if os.getenv("RAILWAY_ENVIRONMENT") else "development"
+    }
+
+
 @app.post("/search")
 @limiter.limit("5/minute")
 async def search_tweets(request: Request, body: SearchRequest):
