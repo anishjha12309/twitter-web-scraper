@@ -139,7 +139,7 @@ export function Sidebar({ isOpen, onToggle, onTweetClick, bookmarkVersion, onBoo
                               </div>
                               <button
                                 onClick={() => handleRemove(tweet.id)}
-                                className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-all"
+                                className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-opacity"
                               >
                                 <X className="h-4 w-4" />
                               </button>

@@ -319,14 +319,14 @@ function App() {
                   <form onSubmit={handleSearch} className="flex gap-3">
                     <Input
                       placeholder="Search keywords, hashtags, or @users..."
-                      className="h-14 text-lg px-6 rounded-2xl border-2 focus-visible:ring-0 focus-visible:border-primary/50 bg-card/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300"
+                      className="h-14 text-lg px-6 rounded-2xl border-2 focus-visible:ring-0 focus-visible:border-primary/50 bg-card/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-shadow duration-300"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                     />
                     <Button
                       type="submit"
                       size="lg"
-                      className="h-14 px-8 rounded-2xl text-lg font-medium shadow-lg hover:shadow-xl transition-all duration-300 btn-premium"
+                      className="h-14 px-8 rounded-2xl text-lg font-medium shadow-lg hover:shadow-xl transition-shadow duration-300 btn-premium"
                       disabled={loading}
                     >
                       {loading ? (
