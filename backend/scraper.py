@@ -39,7 +39,7 @@ _is_reauthenticating = False
 
 
 async def re_authenticate():
-    """Re-authenticate with Twitter using credentials from environment variables"""
+    """Re-authenticate with Twitter using Playwright Stealth browser automation."""
     global _is_reauthenticating
     
     if _is_reauthenticating:
@@ -52,21 +52,37 @@ async def re_authenticate():
     
     _is_reauthenticating = True
     try:
-        print("🔄 Attempting to re-authenticate with Twitter...")
+        print("🎭 Attempting Playwright Stealth re-authentication...")
         
-        await client.login(
-            auth_info_1=TWITTER_USERNAME,
-            auth_info_2=TWITTER_EMAIL,  # Optional, can be None
-            password=TWITTER_PASSWORD
-        )
+        # Import auth_manager here to avoid circular imports
+        from auth_manager import auth_manager
         
-        # Save new cookies
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        cookies_path = os.path.join(script_dir, 'cookies.json')
-        client.save_cookies(cookies_path)
+        # Use browser-based login
+        result = await auth_manager.refresh_session(headless=True)
         
-        print("✅ Re-authentication successful! Cookies saved.")
-        return True
+        if result.get("success"):
+            # Reload cookies into twikit client
+            auth_manager.load_cookies_to_client(client)
+            print("✅ Playwright re-authentication successful!")
+            return True
+        else:
+            print(f"❌ Playwright login failed: {result.get('message')}")
+            # Fallback to legacy twikit login (may not work but worth trying)
+            print("🔄 Attempting legacy twikit login as fallback...")
+            try:
+                await client.login(
+                    auth_info_1=TWITTER_USERNAME,
+                    auth_info_2=TWITTER_EMAIL,
+                    password=TWITTER_PASSWORD
+                )
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                cookies_path = os.path.join(script_dir, 'cookies.json')
+                client.save_cookies(cookies_path)
+                print("✅ Legacy twikit login succeeded!")
+                return True
+            except Exception as legacy_error:
+                print(f"❌ Legacy login also failed: {legacy_error}")
+                return False
         
     except Exception as e:
         print(f"❌ Re-authentication failed: {e}")
