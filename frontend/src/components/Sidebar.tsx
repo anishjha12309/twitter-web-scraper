@@ -9,24 +9,28 @@ interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
   onTweetClick?: (screenName: string) => void;
+  bookmarkVersion?: number;
+  onBookmarkChange?: () => void;
 }
 
-export function Sidebar({ isOpen, onToggle, onTweetClick }: SidebarProps) {
+export function Sidebar({ isOpen, onToggle, onTweetClick, bookmarkVersion, onBookmarkChange }: SidebarProps) {
   const [bookmarks, setBookmarks] = useState<Tweet[]>([]);
   const [activeTab, setActiveTab] = useState<'bookmarks' | 'filters'>('bookmarks');
 
   useEffect(() => {
     setBookmarks(getBookmarks());
-  }, [isOpen]);
+  }, [isOpen, bookmarkVersion]);
 
   const handleRemove = (tweetId: string) => {
     removeBookmark(tweetId);
     setBookmarks(getBookmarks());
+    onBookmarkChange?.();
   };
 
   const handleClearAll = () => {
     clearAllBookmarks();
     setBookmarks([]);
+    onBookmarkChange?.();
   };
 
   return (

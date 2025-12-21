@@ -57,6 +57,7 @@ function App() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [userTimeline, setUserTimeline] = useState<Tweet[]>([]);
+  const [bookmarkVersion, setBookmarkVersion] = useState(0);
 
 
   useEffect(() => {
@@ -123,6 +124,7 @@ function App() {
       toast("Already bookmarked", { icon: "📌" });
     } else {
       saveBookmark(tweet);
+      setBookmarkVersion((v) => v + 1);
       toast.success("Bookmarked!");
     }
   };
@@ -244,6 +246,8 @@ function App() {
         isOpen={sidebarOpen} 
         onToggle={() => setSidebarOpen(!sidebarOpen)}
         onTweetClick={handleUserClick}
+        bookmarkVersion={bookmarkVersion}
+        onBookmarkChange={() => setBookmarkVersion((v) => v + 1)}
       />
 
       {/* Main Container */}
