@@ -35,7 +35,9 @@ import {
   Users,
   Bookmark,
   BookmarkCheck,
-  Sparkles,
+  Chrome,
+  Shield,
+  Zap,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -245,21 +247,26 @@ function App() {
       />
 
       {/* Main Container */}
-      <div className={`min-h-screen w-full bg-background transition-all duration-300 ${sidebarOpen ? 'lg:pl-80' : ''}`}>
-        <div className="max-w-5xl mx-auto p-6 md:p-12 space-y-8">
+      <div className={`min-h-screen w-full bg-background transition-all duration-300 ${sidebarOpen ? 'lg:pl-80' : ''} relative overflow-hidden`}>
+        {/* Animated Background Blobs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 -left-4 w-72 h-72 bg-blue-500/10 dark:bg-blue-500/20 rounded-full filter blur-3xl animate-blob" />
+          <div className="absolute top-0 -right-4 w-72 h-72 bg-purple-500/10 dark:bg-purple-500/20 rounded-full filter blur-3xl animate-blob animation-delay-2000" />
+          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-emerald-500/10 dark:bg-emerald-500/15 rounded-full filter blur-3xl animate-blob animation-delay-4000" />
+        </div>
+
+        <div className="max-w-5xl mx-auto p-6 md:p-12 space-y-8 relative z-10">
           {/* HEADER */}
           <motion.header 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-border pb-6"
+            transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+            className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-border/50 pb-6"
           >
             <div
               className="flex items-center gap-3 cursor-pointer group"
               onClick={() => setView("search")}
             >
-              <div className="p-2 rounded-xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                <Sparkles className="h-6 w-6 text-primary" />
-              </div>
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight gradient-text">
                 Twitter Scraper
               </h1>
@@ -292,18 +299,30 @@ function App() {
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-10"
               >
+                {/* Hero Section */}
+                <section className="text-center mb-8">
+                  <motion.p 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.15 }}
+                    className="text-sm md:text-base text-muted-foreground tracking-wide"
+                  >
+                    Search tweets • Analyze sentiment • Explore profiles
+                  </motion.p>
+                </section>
+
                 <section className="max-w-2xl mx-auto">
                   <form onSubmit={handleSearch} className="flex gap-3">
                     <Input
-                      placeholder="Search keywords or @users..."
-                      className="h-14 text-lg px-6 rounded-xl border-2 focus-visible:ring-0 focus-visible:border-accent bg-card"
+                      placeholder="Search keywords, hashtags, or @users..."
+                      className="h-14 text-lg px-6 rounded-2xl border-2 focus-visible:ring-0 focus-visible:border-primary/50 bg-card/50 backdrop-blur-sm shadow-sm hover:shadow-md transition-all duration-300"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                     />
                     <Button
                       type="submit"
                       size="lg"
-                      className="h-14 px-8 rounded-xl text-lg font-medium"
+                      className="h-14 px-8 rounded-2xl text-lg font-medium shadow-lg hover:shadow-xl transition-all duration-300 btn-premium"
                       disabled={loading}
                     >
                       {loading ? (
@@ -376,6 +395,71 @@ function App() {
 
                   {!loading && tweets.map(renderTweetCard)}
                 </div>
+
+                {/* How It Works Section - Show when no tweets or always at bottom */}
+                {tweets.length === 0 && !loading && !error && (
+                  <section className="mt-16 pt-12 border-t border-border">
+                    <h2 className="text-2xl font-bold text-center mb-8 gradient-text">How It Works</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Step 1 */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="step-card"
+                      >
+                        <span className="step-number">1</span>
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="p-2 rounded-lg bg-blue-500/10">
+                            <Chrome className="h-6 w-6 text-blue-500" />
+                          </div>
+                          <h3 className="font-semibold">Browser Extension</h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Our Chrome extension securely captures your active Twitter session cookies in the background.
+                        </p>
+                      </motion.div>
+
+                      {/* Step 2 */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="step-card"
+                      >
+                        <span className="step-number">2</span>
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="p-2 rounded-lg bg-purple-500/10">
+                            <Shield className="h-6 w-6 text-purple-500" />
+                          </div>
+                          <h3 className="font-semibold">Secure Sync</h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Cookies are encrypted and synced to our backend server via API-key protected endpoints.
+                        </p>
+                      </motion.div>
+
+                      {/* Step 3 */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="step-card"
+                      >
+                        <span className="step-number">3</span>
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="p-2 rounded-lg bg-emerald-500/10">
+                            <Zap className="h-6 w-6 text-emerald-500" />
+                          </div>
+                          <h3 className="font-semibold">Reliable Scraping</h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          The backend uses synced cookies for authenticated requests - no CAPTCHAs or login failures.
+                        </p>
+                      </motion.div>
+                    </div>
+                  </section>
+                )}
               </motion.div>
             )}
 

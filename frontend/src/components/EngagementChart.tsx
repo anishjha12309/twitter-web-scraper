@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, CartesianGrid } from 'recharts';
 import { Tweet } from '@/lib/api';
 import { format } from 'date-fns';
 
@@ -11,9 +11,9 @@ export function EngagementChart({ tweets }: EngagementChartProps) {
   if (!tweets.length) return null;
 
   const data = tweets
-    .slice(0, 20)
+    .slice(0, 10)
     .map((tweet, index) => {
-      let dateLabel = `Tweet ${index + 1}`;
+      let dateLabel = `#${index + 1}`;
       try {
         if (tweet.created_at) {
           const date = new Date(tweet.created_at);
@@ -36,57 +36,62 @@ export function EngagementChart({ tweets }: EngagementChartProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}
-      className="glass-card rounded-xl p-6"
+      className="glass-card rounded-2xl p-6 w-full"
     >
-      <h3 className="text-lg font-semibold mb-4">Engagement Overview</h3>
-      <div className="h-64">
+      <h3 className="text-lg font-semibold mb-6 text-center">Engagement Overview</h3>
+      <div className="h-72 w-full flex items-center justify-center">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data}>
+          <BarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
             <XAxis 
               dataKey="name" 
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
               tickLine={false}
               axisLine={false}
             />
             <YAxis 
-              tick={{ fontSize: 11 }}
+              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
               tickLine={false}
               axisLine={false}
+              width={40}
             />
             <Tooltip
               contentStyle={{
                 backgroundColor: 'hsl(var(--card))',
                 border: '1px solid hsl(var(--border))',
-                borderRadius: '8px',
-                boxShadow: 'var(--glass-shadow)',
+                borderRadius: '12px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                padding: '12px',
               }}
-              labelStyle={{ color: 'hsl(var(--foreground))' }}
+              labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600, marginBottom: '4px' }}
+              itemStyle={{ color: 'hsl(var(--muted-foreground))' }}
             />
             <Bar 
               dataKey="likes" 
-              fill="hsl(var(--accent))" 
-              radius={[4, 4, 0, 0]}
+              fill="hsl(220, 70%, 55%)" 
+              radius={[6, 6, 0, 0]}
               name="Likes"
             />
             <Bar 
               dataKey="retweets" 
-              fill="hsl(var(--muted-foreground))" 
-              radius={[4, 4, 0, 0]}
+              fill="hsl(160, 60%, 45%)" 
+              radius={[6, 6, 0, 0]}
               name="Retweets"
             />
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex justify-center gap-6 mt-4 text-sm">
+      <div className="flex justify-center gap-8 mt-6 text-sm">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-sm bg-accent" />
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'hsl(220, 70%, 55%)' }} />
           <span className="text-muted-foreground">Likes</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-sm bg-muted-foreground" />
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'hsl(160, 60%, 45%)' }} />
           <span className="text-muted-foreground">Retweets</span>
         </div>
       </div>
     </motion.div>
   );
 }
+

@@ -31,18 +31,13 @@ export function Sidebar({ isOpen, onToggle, onTweetClick }: SidebarProps) {
 
   return (
     <>
-      {/* Toggle Button */}
+      {/* Toggle Button - same spring animation as sidebar */}
       <motion.button
-        initial={false}
-        animate={{ x: isOpen ? 0 : 0 }}
+        initial={{ left: 0 }}
+        animate={{ left: isOpen ? 320 : 0 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
         onClick={onToggle}
-        className={`
-          fixed top-1/2 -translate-y-1/2 z-50
-          ${isOpen ? 'left-80' : 'left-0'}
-          bg-primary text-primary-foreground
-          p-2 rounded-r-lg shadow-lg
-          hover:bg-primary/90 transition-colors
-        `}
+        className="fixed top-1/2 -translate-y-1/2 z-50 bg-primary text-primary-foreground p-2 rounded-r-lg shadow-lg hover:bg-primary/90"
       >
         {isOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
       </motion.button>

@@ -31,22 +31,39 @@ export function SpotlightCard({ children, className = '' }: SpotlightCardProps) 
       onMouseLeave={handleMouseLeave}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ scale: 1.01 }}
-      transition={{ duration: 0.2 }}
+      whileHover={{ y: -3 }}
+      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
       className={`
-        relative overflow-hidden rounded-xl
-        glass-card border border-border
-        transition-shadow duration-300
-        hover:shadow-lg hover:border-accent/30
+        relative overflow-hidden rounded-2xl
+        bg-card/80 backdrop-blur-sm border border-border/50
+        shadow-sm hover:shadow-2xl hover:shadow-black/5 dark:hover:shadow-black/30
+        transition-all duration-500 ease-out
         ${className}
       `}
     >
+      {/* Gradient border glow on hover */}
+      <div
+        className="pointer-events-none absolute -inset-[1px] rounded-2xl opacity-0 transition-opacity duration-700"
+        style={{
+          opacity: opacity * 0.6,
+          background: `linear-gradient(135deg, 
+            hsl(220, 70%, 55%, 0.4) 0%, 
+            hsl(280, 65%, 60%, 0.4) 50%,
+            hsl(200, 70%, 55%, 0.4) 100%)`,
+        }}
+      />
+      
+      {/* Inner card background */}
+      <div className="absolute inset-[1px] rounded-2xl bg-card" />
+      
       {/* Spotlight effect */}
       <div
-        className="pointer-events-none absolute -inset-px opacity-0 transition-opacity duration-300"
+        className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-500"
         style={{
           opacity,
-          background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, hsl(var(--accent) / 0.1), transparent 40%)`,
+          background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, 
+            hsl(220, 70%, 55%, 0.06), 
+            transparent 40%)`,
         }}
       />
       
@@ -57,3 +74,5 @@ export function SpotlightCard({ children, className = '' }: SpotlightCardProps) 
     </motion.div>
   );
 }
+
+
