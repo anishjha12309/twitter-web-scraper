@@ -252,7 +252,7 @@ async def force_reauth():
     success = await re_authenticate()
     return {
         "success": success,
-        "message": "Re-authentication successful! New cookies saved." if success else "Re-authentication failed. Check Railway logs for details.",
+        "message": "Re-authentication successful! New cookies saved." if success else "Re-authentication failed. Check Render logs for details.",
         "credentials_available": all([TWITTER_USERNAME, TWITTER_PASSWORD])
     }
 
@@ -332,7 +332,7 @@ async def search_tweets(request: Request, body: SearchRequest):
         error_msg = str(e)
         error_type = type(e).__name__
         
-        # Print detailed error to Railway logs
+        # Print detailed error to Render logs
         print(f"❌ Search Error [{error_type}]: {error_msg}")
         print(f"📋 Full traceback:\n{traceback.format_exc()}")
         
