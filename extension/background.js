@@ -77,12 +77,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// Optional: Auto-sync when visiting Twitter (commented out - can enable if desired)
-// chrome.cookies.onChanged.addListener((changeInfo) => {
-//   if (changeInfo.cookie.domain.includes('twitter.com') || changeInfo.cookie.domain.includes('x.com')) {
-//     if (changeInfo.cookie.name === 'auth_token') {
-//       console.log('🔄 Auth token changed, syncing...');
-//       syncCookies();
-//     }
-//   }
-// });
+// Auto-sync when Twitter cookies change (auth_token specifically)
+chrome.cookies.onChanged.addListener((changeInfo) => {
+  if (changeInfo.cookie.domain.includes('twitter.com') || changeInfo.cookie.domain.includes('x.com')) {
+    if (changeInfo.cookie.name === 'auth_token') {
+      console.log('🔄 Auth token changed, auto-syncing...');
+      syncCookies();
+    }
+  }
+});
