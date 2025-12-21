@@ -10,13 +10,17 @@ import random
 from typing import Optional
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
 
-# Try to import stealth - fall back gracefully if not available
+# Try to import stealth - v2.0.0 uses different API
 try:
-    from playwright_stealth import stealth_async
+    from playwright_stealth import Stealth
     STEALTH_AVAILABLE = True
 except ImportError:
-    STEALTH_AVAILABLE = False
-    print("⚠️ playwright-stealth not installed. Running without stealth mode.")
+    try:
+        from playwright_stealth import stealth_async
+        STEALTH_AVAILABLE = "legacy"
+    except ImportError:
+        STEALTH_AVAILABLE = False
+        print("⚠️ playwright-stealth not installed. Running without stealth mode.")
 
 
 class AuthManager:
@@ -104,10 +108,14 @@ class AuthManager:
                 
                 page = await context.new_page()
                 
-                # Apply stealth if available
-                if STEALTH_AVAILABLE:
+                # Apply stealth if available (v2.0.0 API)
+                if STEALTH_AVAILABLE == True:
+                    stealth = Stealth()
+                    await stealth.apply_stealth_async(page)
+                    print("🥷 Stealth mode enabled (v2)")
+                elif STEALTH_AVAILABLE == "legacy":
                     await stealth_async(page)
-                    print("🥷 Stealth mode enabled")
+                    print("🥷 Stealth mode enabled (legacy)")
                 
                 # Remove webdriver flag
                 await page.add_init_script("""
@@ -132,27 +140,28 @@ class AuthManager:
                     # Click Next
                     next_button = page.locator('button:has-text("Next")')
                     await next_button.click()
-                    await self._human_delay(1500, 2500)
+                    await self._human_delay(2000, 3000)
                     
-                    # Handle potential email verification
+                    # Handle potential email/phone verification (Twitter sometimes asks for this)
                     try:
-                        email_input = page.locator('input[data-testid="ocfEnterTextTextInput"]')
-                        if await email_input.is_visible(timeout=3000):
-                            print("📧 Email verification required...")
+                        # Check for unusual activity verification
+                        unusual_input = page.locator('input[data-testid="ocfEnterTextTextInput"]')
+                        if await unusual_input.is_visible(timeout=3000):
+                            print("📧 Unusual activity verification required...")
                             if email:
                                 await self._type_like_human(page, 'input[data-testid="ocfEnterTextTextInput"]', email)
                                 verify_btn = page.locator('button[data-testid="ocfEnterTextNextButton"]')
                                 await verify_btn.click()
-                                await self._human_delay(1500, 2500)
+                                await self._human_delay(2000, 3000)
                             else:
-                                return {"success": False, "message": "Email verification required but TWITTER_EMAIL not set"}
+                                return {"success": False, "message": "Email/phone verification required but TWITTER_EMAIL not set"}
                     except PlaywrightTimeout:
-                        pass  # No email verification needed
+                        pass  # No verification needed
                     
-                    # Enter password
+                    # Enter password - try multiple selectors with longer timeout
                     print("🔑 Entering password...")
-                    password_input = page.locator('input[name="password"]')
-                    await password_input.wait_for(state='visible', timeout=10000)
+                    password_input = page.locator('input[name="password"], input[type="password"]')
+                    await password_input.wait_for(state='visible', timeout=20000)
                     await self._type_like_human(page, 'input[name="password"]', password)
                     await self._human_delay()
                     
