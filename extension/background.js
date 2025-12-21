@@ -3,6 +3,46 @@
  * Monitors Twitter cookies and syncs them to the backend
  */
 
+// Sync interval in minutes (30 min = 0.5 hour)
+const SYNC_INTERVAL_MINUTES = 30;
+
+// Setup periodic cookie sync using Chrome alarms
+chrome.alarms.create('cookieSync', {
+  periodInMinutes: SYNC_INTERVAL_MINUTES
+});
+
+// Listen for alarm to trigger periodic sync
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === 'cookieSync') {
+    console.log('⏰ Periodic cookie sync triggered');
+    const result = await syncCookies();
+    if (result.success) {
+      console.log('✅ Periodic sync completed successfully');
+    } else {
+      console.log('⚠️ Periodic sync failed:', result.error);
+    }
+  }
+});
+
+// Also sync immediately when service worker starts (extension loads/updates)
+chrome.runtime.onInstalled.addListener(async () => {
+  console.log('🚀 Extension installed/updated, syncing cookies...');
+  // Small delay to ensure storage is ready
+  setTimeout(async () => {
+    const result = await syncCookies();
+    console.log('Initial sync result:', result);
+  }, 1000);
+});
+
+// Sync when browser starts and extension is loaded
+chrome.runtime.onStartup.addListener(async () => {
+  console.log('🖥️ Browser started, syncing cookies...');
+  setTimeout(async () => {
+    const result = await syncCookies();
+    console.log('Startup sync result:', result);
+  }, 2000);
+});
+
 // Get cookies from Twitter/X domains
 async function getTwitterCookies() {
   const cookies = {};
