@@ -1,8 +1,8 @@
 """
 Twitter Web Scraper API
-With automatic cookie refresh on expiration
+With browser extension cookie sync
 """
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
@@ -11,9 +11,10 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from async_lru import alru_cache
-from typing import Optional
+from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 import os
+import json
 import uvicorn
 import traceback
 
@@ -23,66 +24,46 @@ load_dotenv()
 # Initialize Client
 client = Client('en-US')
 
-# Get credentials from environment variables
+# Get credentials from environment variables (optional now - mainly for local dev)
 TWITTER_USERNAME = os.getenv("TWITTER_USERNAME")
 TWITTER_EMAIL = os.getenv("TWITTER_EMAIL")
 TWITTER_PASSWORD = os.getenv("TWITTER_PASSWORD")
 
-# Log credential status on startup (don't log actual values for security)
-print(f"🔑 Credentials check:")
-print(f"   TWITTER_USERNAME: {'✅ Set' if TWITTER_USERNAME else '❌ Not set'}")
-print(f"   TWITTER_EMAIL: {'✅ Set' if TWITTER_EMAIL else '⚠️ Not set (optional)'}")
-print(f"   TWITTER_PASSWORD: {'✅ Set' if TWITTER_PASSWORD else '❌ Not set'}")
+# API Key for cookie sync endpoint
+COOKIE_SYNC_API_KEY = os.getenv("COOKIE_SYNC_API_KEY")
+
+# Log configuration status on startup
+print(f"🔑 Configuration check:")
+print(f"   COOKIE_SYNC_API_KEY: {'✅ Set' if COOKIE_SYNC_API_KEY else '⚠️ Not set (required for extension sync)'}")
+print(f"   TWITTER_USERNAME: {'✅ Set' if TWITTER_USERNAME else '⚠️ Not set (optional)'}")
 
 # Flag to track if we're currently re-authenticating (prevent infinite loops)
 _is_reauthenticating = False
 
 
 async def re_authenticate():
-    """Re-authenticate with Twitter using Playwright Stealth browser automation."""
+    """
+    Re-authenticate by reloading cookies from file.
+    In the browser extension approach, cookies are pushed externally.
+    """
     global _is_reauthenticating
     
     if _is_reauthenticating:
         print("⚠️ Already re-authenticating, skipping...")
         return False
     
-    if not all([TWITTER_USERNAME, TWITTER_PASSWORD]):
-        print("❌ Cannot re-authenticate: TWITTER_USERNAME and TWITTER_PASSWORD must be set")
-        return False
-    
     _is_reauthenticating = True
     try:
-        print("🎭 Attempting Playwright Stealth re-authentication...")
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        cookies_path = os.path.join(script_dir, 'cookies.json')
         
-        # Import auth_manager here to avoid circular imports
-        from auth_manager import auth_manager
-        
-        # Use browser-based login
-        result = await auth_manager.refresh_session(headless=True)
-        
-        if result.get("success"):
-            # Reload cookies into twikit client
-            auth_manager.load_cookies_to_client(client)
-            print("✅ Playwright re-authentication successful!")
+        if os.path.exists(cookies_path):
+            client.load_cookies(cookies_path)
+            print("🔄 Cookies reloaded from file")
             return True
         else:
-            print(f"❌ Playwright login failed: {result.get('message')}")
-            # Fallback to legacy twikit login (may not work but worth trying)
-            print("🔄 Attempting legacy twikit login as fallback...")
-            try:
-                await client.login(
-                    auth_info_1=TWITTER_USERNAME,
-                    auth_info_2=TWITTER_EMAIL,
-                    password=TWITTER_PASSWORD
-                )
-                script_dir = os.path.dirname(os.path.abspath(__file__))
-                cookies_path = os.path.join(script_dir, 'cookies.json')
-                client.save_cookies(cookies_path)
-                print("✅ Legacy twikit login succeeded!")
-                return True
-            except Exception as legacy_error:
-                print(f"❌ Legacy login also failed: {legacy_error}")
-                return False
+            print("❌ No cookies.json found. Use the browser extension to sync cookies.")
+            return False
         
     except Exception as e:
         print(f"❌ Re-authentication failed: {e}")
@@ -216,11 +197,56 @@ class SearchRequest(BaseModel):
     count: Optional[int] = 20
     search_type: Optional[str] = "Latest"
 
+class CookieSyncRequest(BaseModel):
+    cookies: Dict[str, Any]
+
 # --- ENDPOINTS ---
 
 @app.get("/")
 async def root():
     return {"status": "online", "message": "Twitter Scraper API is running"}
+
+# --- COOKIE SYNC ENDPOINT (Browser Extension) ---
+
+@app.post("/api/cookies/sync")
+async def sync_cookies(body: CookieSyncRequest, x_api_key: str = Header(None)):
+    """
+    Receive cookies from browser extension.
+    Protected by API key authentication.
+    """
+    # Verify API key
+    if not COOKIE_SYNC_API_KEY:
+        raise HTTPException(status_code=500, detail="COOKIE_SYNC_API_KEY not configured on server")
+    
+    if x_api_key != COOKIE_SYNC_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    
+    # Validate cookies have required fields
+    cookies = body.cookies
+    if not cookies.get('auth_token') or not cookies.get('ct0'):
+        raise HTTPException(status_code=400, detail="Missing required cookies: auth_token and ct0")
+    
+    try:
+        # Save cookies to file
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        cookies_path = os.path.join(script_dir, 'cookies.json')
+        
+        with open(cookies_path, 'w') as f:
+            json.dump(cookies, f, indent=2)
+        
+        # Reload into twikit client
+        client.load_cookies(cookies_path)
+        
+        print(f"✅ Cookies synced successfully! {len(cookies)} cookies received.")
+        return {
+            "success": True,
+            "message": f"Cookies synced successfully! {len(cookies)} cookies received.",
+            "cookies_count": len(cookies)
+        }
+        
+    except Exception as e:
+        print(f"❌ Cookie sync failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/debug/auth")
 async def debug_auth():

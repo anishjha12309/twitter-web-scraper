@@ -1,5 +1,5 @@
-# Official Playwright Python image - MUST match pip package version
-FROM mcr.microsoft.com/playwright/python:v1.57.0-jammy
+# Lightweight Python image (no Playwright needed)
+FROM python:3.10-slim
 
 WORKDIR /app
 

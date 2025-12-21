@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Twitter Cookie Sync</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      width: 320px;
+      min-height: 280px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #fff;
+      padding: 16px;
+    }
+    
+    h1 {
+      font-size: 18px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    h1 span {
+      font-size: 24px;
+    }
+    
+    .section {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    
+    label {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #8b8b9a;
+      margin-bottom: 6px;
+    }
+    
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      background: rgba(255,255,255,0.05);
+      color: #fff;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #1da1f2;
+    }
+    
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-save {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    
+    .btn-save:hover {
+      background: rgba(255,255,255,0.15);
+    }
+    
+    .btn-sync {
+      background: #1da1f2;
+      color: #fff;
+    }
+    
+    .btn-sync:hover {
+      background: #1a91da;
+    }
+    
+    .btn-sync:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+    
+    .status {
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      text-align: center;
+    }
+    
+    .status.success {
+      background: rgba(39, 174, 96, 0.2);
+      color: #27ae60;
+    }
+    
+    .status.error {
+      background: rgba(231, 76, 60, 0.2);
+      color: #e74c3c;
+    }
+    
+    .status.info {
+      background: rgba(52, 152, 219, 0.2);
+      color: #3498db;
+    }
+    
+    .cookie-status {
+      font-size: 12px;
+      color: #8b8b9a;
+      margin-top: 8px;
+    }
+    
+    .cookie-status.valid {
+      color: #27ae60;
+    }
+    
+    .cookie-status.invalid {
+      color: #e74c3c;
+    }
+  </style>
+</head>
+<body>
+  <h1><span>🍪</span> Twitter Cookie Sync</h1>
+  
+  <div class="section">
+    <label>Backend URL</label>
+    <input type="url" id="backendUrl" placeholder="https://twitter-web-scraper.onrender.com">
+    
+    <label>API Key</label>
+    <input type="password" id="apiKey" placeholder="Your secret API key">
+    
+    <button class="btn-save" id="saveBtn">💾 Save Configuration</button>
+  </div>
+  
+  <button class="btn-sync" id="syncBtn">🔄 Sync Cookies Now</button>
+  
+  <div id="status"></div>
+  <div id="cookieStatus" class="cookie-status"></div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
