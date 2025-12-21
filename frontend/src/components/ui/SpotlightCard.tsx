@@ -37,7 +37,7 @@ export function SpotlightCard({ children, className = '' }: SpotlightCardProps) 
         relative overflow-hidden rounded-2xl
         bg-card/80 backdrop-blur-sm border border-border/50
         shadow-sm hover:shadow-2xl hover:shadow-black/5 dark:hover:shadow-black/30
-        transition-all duration-500 ease-out
+        transition-shadow duration-300 ease-out
         ${className}
       `}
     >

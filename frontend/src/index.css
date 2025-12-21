@@ -86,7 +86,6 @@
   
   body {
     @apply bg-background text-foreground;
-    transition: background-color 0.3s ease, color 0.3s ease;
   }
 }
 
@@ -267,7 +266,7 @@
 
   /* Step card styles */
   .step-card {
-    @apply relative p-6 rounded-2xl border transition-all duration-300;
+    @apply relative p-6 rounded-2xl border transition-[transform,box-shadow] duration-300;
     background: var(--glass-bg);
     border-color: var(--glass-border);
   }
